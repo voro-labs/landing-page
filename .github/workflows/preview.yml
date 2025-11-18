@@ -17,10 +17,11 @@ jobs:
 
       - name: Define preview app name
         id: vars
-        run: echo "APP_NAME=myapp-pr-${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+        run: echo "APP_NAME=${{ github.event.repository.name }}-pr-${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
 
       - name: Create Fly app (if not exists)
-        run: flyctl apps create ${{ steps.vars.outputs.APP_NAME }} --region gru || true
+        run: |
+          flyctl apps create ${{ steps.vars.outputs.APP_NAME }} --yes || true
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
