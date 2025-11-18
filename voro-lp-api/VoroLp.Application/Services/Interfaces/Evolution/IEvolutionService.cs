@@ -6,7 +6,7 @@ namespace VoroLp.Application.Services.Interfaces.Evolution
 {
     public interface IEvolutionService
     {
-        Task<(Contact? senderContact, Group? group, Chat chat)> CreateChatAndGroupOrContactAsync(
+        Task<(Contact senderContact, Group? group, Chat chat)> CreateChatAndGroupOrContactAsync(
             string instanceName, string normalizedJid, string pushName,
             string remoteJid, bool isGroup = false, string? participant = "");
 
@@ -14,6 +14,11 @@ namespace VoroLp.Application.Services.Interfaces.Evolution
         Task<IEnumerable<GroupEventDto>> GetGroupsAsync();
         Task<IEnumerable<ContactEventDto>> GetContactsAsync();
         Task<InstanceEventDto> GetInstanceStatusAsync();
-        Task<string> SendMessageAsync(string contactNumber, MessageRequestDto request);
+        Task<string> SendMessageAsync(MessageRequestDto request);
+        Task<string> SendMediaMessageAsync(MediaRequestDto request);
+        Task<string> SendLocationMessageAsync(LocationRequestDto request);
+        Task<string> SendReactionMessageAsync(ReactionRequestDto request);
+        Task<string> SendContactMessageAsync(ContactRequestDto request);
+        Task<string> SendQuotedMessageAsync(QuotedRequestDto request);
     }
 }

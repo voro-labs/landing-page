@@ -2,17 +2,15 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using System.Text.Json;
 using VoroLp.API.Extensions;
 using VoroLp.API.ViewModels;
 using VoroLp.Application.DTOs.Evolution;
 using VoroLp.Application.DTOs.Evolution.Webhook;
 using VoroLp.Application.DTOs.Request;
-using VoroLp.Application.Services.Evolution;
 using VoroLp.Application.Services.Interfaces.Evolution;
-using VoroLp.Domain.Entities.Evolution;
 using VoroLp.Domain.Enums;
+using VoroLp.Shared.Extensions;
 
 namespace VoroLp.API.Controllers.Evolution
 {
@@ -97,13 +95,13 @@ namespace VoroLp.API.Controllers.Evolution
         // POST → Enviar mensagem
         // ======================================================
         [HttpPost("contacts/save")]
-        public async Task<IActionResult> ContactSave([FromBody] ContactRequestDto request)
+        public async Task<IActionResult> ContactSave([FromBody] ContactDto request)
         {
             try
             {
                 var (senderContact, group, chat) = await _evolutionService.CreateChatAndGroupOrContactAsync(
-                    request.InstanceName, $"{request.Number}@s.whatsapp.net",
-                    $"{request.Name}", $"{request.Number}@s.whatsapp.net", false, string.Empty);
+                    $"{request.InstanceName}", $"{request.Number}@s.whatsapp.net",
+                    $"{request.DisplayName}", $"{request.Number}@s.whatsapp.net", false, string.Empty);
 
                 if (senderContact != null)
                     _contactService.Update(senderContact);
@@ -132,6 +130,42 @@ namespace VoroLp.API.Controllers.Evolution
             }
         }
 
+        [HttpPut("contacts/{contactId:guid}/update")]
+        public async Task<IActionResult> ContactUpdate(Guid contactId, [FromForm] ContactDto request)
+        {
+            try
+            {
+                var senderContact = await _contactService.Query(c => c.Id == contactId).FirstOrDefaultAsync();
+
+                if (senderContact == null)
+                    return ResponseViewModel<ContactDto>
+                        .Fail("Contato não foi cadastrado")
+                        .ToActionResult();
+
+                var profilePicture = "";
+
+                if (request.ProfilePicture != null)
+                    profilePicture = await request.ProfilePicture!.OpenReadStream()!
+                        .ToBase64Async(request.ProfilePicture.ContentType);
+
+                await _contactService.UpdateContact(senderContact, request.DisplayName, profilePicture);
+
+                await _contactService.SaveChangesAsync();
+
+                var contactDto = _mapper.Map<ContactDto>(senderContact);
+
+                return ResponseViewModel<ContactDto>
+                    .Success(contactDto)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<ContactDto>
+                    .Fail(ex.Message)
+                    .ToActionResult();
+            }
+        }
+
         // ======================================================
         // GET → Mensagens de um contato
         // ======================================================
@@ -141,6 +175,8 @@ namespace VoroLp.API.Controllers.Evolution
             try
             {
                 var messages = await _messageService.Query(m => m.ContactId == contactId)
+                    .Include(m => m.QuotedMessage)
+                        .ThenInclude(q => q!.Contact)
                     .Include(m => m.Reactions)
                     .OrderBy(m => m.SentAt)
                     .ToListAsync();
@@ -180,11 +216,81 @@ namespace VoroLp.API.Controllers.Evolution
                 if (string.IsNullOrWhiteSpace(contact.Number))
                     return BadRequest("Contato não possui número cadastrado.");
 
-                if (string.IsNullOrWhiteSpace(request.Content))
+                if (string.IsNullOrWhiteSpace(request.Conversation))
                     return BadRequest("Mensagem não pode ser vazia.");
 
+                request.Number = contact.Number;
+
                 // EvolutionService retorna STRING → ajustado
-                var responseString = await _evolutionService.SendMessageAsync(contact.Number, request);
+                var responseString = await _evolutionService.SendMessageAsync(request);
+
+                var response = JsonSerializer.Deserialize<MessageUpsertDataDto>(responseString);
+
+                var messageDto = new MessageDto()
+                {
+                    ChatId = chat.Id,
+                    ContactId = contact.Id,
+                    Content = $"{response?.Message.Conversation}",
+                    ExternalId = Guid.NewGuid().ToString(),
+                    IsFromMe = true,
+                    RawJson = responseString,
+                    RemoteFrom = "",
+                    RemoteTo = contact.RemoteJid,
+                    SentAt = DateTimeOffset.UtcNow,
+                    Status = MessageStatusEnum.Sent,
+                    Type = MessageTypeEnum.Text
+                };
+
+                await _messageService.AddAsync(messageDto);
+
+                contact.LastMessageAt = DateTimeOffset.UtcNow;
+                
+                _contactService.Update(contact);
+
+                await _messageService.SaveChangesAsync();
+                
+                await _contactService.SaveChangesAsync();
+
+                return ResponseViewModel<MessageDto>
+                    .Success(messageDto)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<MessageDto>
+                    .Fail(ex.Message)
+                    .ToActionResult();
+            }
+        }
+
+        // ======================================================
+        // POST → Enviar resposta para mensagem
+        // ======================================================
+        [HttpPost("messages/{contactId:guid}/send/quoted")]
+        public async Task<IActionResult> SendQuotedMessage(Guid contactId, [FromBody] QuotedRequestDto request)
+        {
+            try
+            {
+                var contact = await _contactService.Query(c => c.Id == contactId).FirstOrDefaultAsync();
+
+                var chat = await _chatService.Query(chat => chat.ContactId == contactId).FirstOrDefaultAsync();
+
+                if (chat == null)
+                    return NoContent();
+
+                if (contact == null)
+                    return BadRequest("Contato não encontrado!");
+
+                if (string.IsNullOrWhiteSpace(contact.Number))
+                    return BadRequest("Contato não possui número cadastrado.");
+
+                if (string.IsNullOrWhiteSpace(request.Message.Conversation))
+                    return BadRequest("Mensagem não pode ser vazia.");
+
+                request.Number = contact.Number;
+
+                // EvolutionService retorna STRING → ajustado
+                var responseString = await _evolutionService.SendQuotedMessageAsync(request);
 
                 var response = JsonSerializer.Deserialize<MessageUpsertDataDto>(responseString);
 

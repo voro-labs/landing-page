@@ -6,15 +6,24 @@ import { useState, useRef, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Phone, Video, MoreVertical, Mic, Paperclip, X } from "lucide-react";
+import { Send, Phone, Video, MoreVertical, Mic, Paperclip, X, Edit } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { ContactDto } from "@/types/DTOs/contactDto.interface";
 import { MessageDto } from "@/types/DTOs/messageDto.interface";
 import { MessageStatus } from "./message-status";
 import { MessageReactions } from "./message-reactions";
 import { MessageContent } from "./message-content";
 import { TypingIndicator } from "./typing-indicator";
 import { MessageActions } from "./message-actions";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { ContactDto } from "@/types/DTOs/contactDto.interface";
 
 interface ChatAreaProps {
   contact?: ContactDto;
@@ -25,6 +34,7 @@ interface ChatAreaProps {
   onForward?: (message: MessageDto) => void;
   onDelete?: (message: MessageDto) => void;
   isTyping?: boolean;
+  onEditContact?: (contactId: string, contactName: string, phoneNumber: string, profilePicture: File | null) => void;
 }
 
 export function ChatArea({
@@ -36,14 +46,42 @@ export function ChatArea({
   onForward,
   onDelete,
   isTyping = false,
+  onEditContact,
 }: ChatAreaProps) {
   const [inputValue, setInputValue] = useState("");
   const [quotedMessage, setQuotedMessage] = useState<MessageDto | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editedName, setEditedName] = useState("");
+  const [editedNumber, setEditedNumber] = useState("");
+  const [editedPhoto, setEditedPhoto] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (isEditDialogOpen && contact) {
+      setEditedName(contact.displayName || "");
+      setEditedNumber(contact.number);
+      setPreviewUrl(contact.profilePictureUrl || "");
+      setEditedPhoto(null);
+    }
+  }, [isEditDialogOpen, contact, messages]);
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setEditedPhoto(file);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+    }
+  };
+
+  const handleSaveContact = () => {
+    if (!contact) return;
+    onEditContact?.(`${contact.id}`, editedName, editedNumber, editedPhoto);
+    setIsEditDialogOpen(false);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,6 +143,9 @@ export function ChatArea({
         </div>
 
         <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={() => setIsEditDialogOpen(true)}>
+            <Edit className="h-5 w-5" />
+          </Button>
           <Button variant="ghost" size="icon">
             <Phone className="h-5 w-5" />
           </Button>
@@ -254,6 +295,75 @@ export function ChatArea({
           )}
         </form>
       </div>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Editar Contato</DialogTitle>
+            <DialogDescription>
+              Atualize as informações do contato aqui.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="flex flex-col items-center gap-4">
+              <Avatar className="h-24 w-24">
+                <AvatarImage
+                  src={previewUrl || "/placeholder.svg"}
+                  alt="Preview"
+                />
+                <AvatarFallback>
+                  {editedName.charAt(0) || editedNumber.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoChange}
+                className="hidden"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Escolher Foto
+              </Button>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="name">Nome</Label>
+              <Input
+                id="name"
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                placeholder="Nome do contato"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="number">Número</Label>
+              <Input
+                id="number"
+                value={editedNumber}
+                onChange={(e) => setEditedNumber(e.target.value)}
+                placeholder="Número de telefone"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsEditDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button type="button" onClick={handleSaveContact}>
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

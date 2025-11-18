@@ -6,7 +6,7 @@ namespace VoroLp.Application.Services.Interfaces.Evolution
 {
     public interface IContactIdentifierService : IServiceBase<ContactIdentifier>
     {
-        Task<ContactIdentifier> GetOrCreateAsync(string remoteJid, string? remoteJidAlt);
+        Task<ContactIdentifier> GetOrCreateAsync(string pushName, string remoteJid, string? remoteJidAlt, string? profilePicture = null);
         Task AddAsync(ContactIdentifierDto contactIdentifierDto);
     }
 }

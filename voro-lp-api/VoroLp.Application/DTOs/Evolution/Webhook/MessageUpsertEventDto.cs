@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 using VoroLp.Application.DTOs.Evolution.Webhook.Base;
+using VoroLp.Shared.Converters;
 
 namespace VoroLp.Application.DTOs.Evolution.Webhook
 {
@@ -21,6 +22,9 @@ namespace VoroLp.Application.DTOs.Evolution.Webhook
 
         [JsonPropertyName("message")]
         public MessageContentDto Message { get; set; } = new();
+
+        [JsonPropertyName("contextInfo")]
+        public ContextInfoDto? ContextInfo { get; set; }
 
         [JsonPropertyName("messageType")]
         public string MessageType { get; set; } = string.Empty;
@@ -110,15 +114,18 @@ namespace VoroLp.Application.DTOs.Evolution.Webhook
         public string? MimeType { get; set; }
 
         [JsonPropertyName("fileSha256")]
+        [JsonConverter(typeof(ByteArrayFromObjectConverter))]
         public byte[]? FileSha256 { get; set; }
 
         [JsonPropertyName("fileEncSha256")]
+        [JsonConverter(typeof(ByteArrayFromObjectConverter))]
         public byte[]? FileEncSha256 { get; set; }
 
         [JsonPropertyName("fileLength")]
         public MediaFileLengthDto? FileLength { get; set; }
 
         [JsonPropertyName("mediaKey")]
+        [JsonConverter(typeof(ByteArrayFromObjectConverter))]
         public byte[]? MediaKey { get; set; }
 
         [JsonPropertyName("mediaKeyTimestamp")]
@@ -134,6 +141,7 @@ namespace VoroLp.Application.DTOs.Evolution.Webhook
         public int? Seconds { get; set; }
 
         [JsonPropertyName("jpegThumbnail")]
+        [JsonConverter(typeof(ByteArrayFromObjectConverter))]
         public byte[]? JpegThumbnail { get; set; }
 
         [JsonPropertyName("contextInfo")]
@@ -191,6 +199,7 @@ namespace VoroLp.Application.DTOs.Evolution.Webhook
     public class MessageContextInfoDto
     {
         [JsonPropertyName("messageSecret")]
+        [JsonConverter(typeof(ByteArrayFromObjectConverter))]
         public byte[]? MessageSecret { get; set; }
 
         [JsonPropertyName("deviceListMetadata")]
@@ -199,11 +208,8 @@ namespace VoroLp.Application.DTOs.Evolution.Webhook
         [JsonPropertyName("deviceListMetadataVersion")]
         public int? DeviceListMetadataVersion { get; set; }
 
-        [JsonPropertyName("StanzaId")]
+        [JsonPropertyName("stanzaId")]
         public string? StanzaId { get; set; }
-
-        [JsonPropertyName("quotedMessage")]
-        public MessageContentDto? QuotedMessage { get; set; }
     }
 
     public class DeviceListMetadataDto
@@ -215,9 +221,28 @@ namespace VoroLp.Application.DTOs.Evolution.Webhook
         public int[]? RecipientKeyIndexes { get; set; }
 
         [JsonPropertyName("recipientKeyHash")]
+        [JsonConverter(typeof(ByteArrayFromObjectConverter))]
         public byte[]? RecipientKeyHash { get; set; }
 
         [JsonPropertyName("recipientTimestamp")]
         public MediaKeyTimestampDto? RecipientTimestamp { get; set; }
+    }
+
+    public class ContextInfoDto
+    {
+        [JsonPropertyName("mentionedJid")]
+        public string[]? MentionedJid { get; set; }
+
+        [JsonPropertyName("groupMentions")]
+        public string[]? GroupMentions { get; set; }
+
+        [JsonPropertyName("stanzaId")]
+        public string? StanzaId { get; set; }
+
+        [JsonPropertyName("participant")]
+        public string Participant { get; set; } = string.Empty;
+
+        [JsonPropertyName("quotedMessage")]
+        public MessageContentDto? QuotedMessage { get; set; }
     }
 }

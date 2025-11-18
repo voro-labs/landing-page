@@ -7,6 +7,10 @@ namespace VoroLp.Application.DTOs.Evolution.Webhook
     {
     }
 
+    public class ContactsUpdateEventDto : EvolutionEventDto<List<ContactUpdateDataDto>>
+    {
+    }
+
     public class ContactUpdateDataDto
     {
         [JsonPropertyName("remoteJid")]

@@ -36,13 +36,13 @@ export function useEvolutionChat() {
     }
   }, [])
 
-  // 🔹 Enviar mensagem
-  const saveContact = useCallback(async (name: string, number: string, instanceName: string) => {
-    if (!name || !number) return
+  // 🔹 Salvar contato
+  const saveContact = useCallback(async (displayName: string, number: string, instanceName: string) => {
+    if (!displayName || !number) return
     setError(null)
 
     try {
-      const body = { Name: name, Number: number }
+      const body = { DisplayName: displayName, Number: number, InstanceName: instanceName }
 
       const response = await secureApiCall<ContactDto>(`${API_CONFIG.ENDPOINTS.CHAT}/contacts/save`, {
         method: "POST",
@@ -53,7 +53,7 @@ export function useEvolutionChat() {
 
       let newContact: ContactDto = {
         id: Date.now().toString(),
-        displayName: name,
+        displayName,
         number: number
       };
 
@@ -62,7 +62,52 @@ export function useEvolutionChat() {
 
       setContacts(prev => [...prev, newContact]);
     } catch (err) {
-      handleApiError("Erro ao enviar mensagem", err)
+      handleApiError("Erro ao salvar contato", err)
+    }
+  }, [])
+
+    // 🔹 Atualizar contato
+  const updateContact = useCallback(async (contactId: string, displayName: string, number: string, instanceName: string, profilePicture: File | null) => {
+    if (!displayName || !number) return
+    setError(null)
+
+    try {
+      const form = new FormData();
+      
+      form.append("displayName", displayName);
+      form.append("number", number);
+
+      if (instanceName)
+        form.append("instanceName", instanceName);
+
+      if (profilePicture)
+        form.append("profilePicture", profilePicture);
+
+      const response = await secureApiCall<ContactDto>(`${API_CONFIG.ENDPOINTS.CHAT}/contacts/${contactId}/update`, {
+        method: "PUT",
+        body: form,
+      })
+
+      if (response.hasError) throw new Error(response.message ?? "Erro ao salvar contato")
+
+      let newContact: ContactDto = {
+        id: contactId,
+        displayName,
+        number: number
+      };
+
+      if (response.data)
+        newContact = response.data;
+
+      setContacts(prev => {
+        const exists = prev.some(c => c.id === newContact.id);
+        if (exists) {
+          return prev.map(c => c.id === newContact.id ? newContact : c);
+        }
+        return [...prev, newContact];
+      });
+    } catch (err) {
+      handleApiError("Erro ao salvar contato", err)
     }
   }, [])
 
@@ -150,6 +195,7 @@ export function useEvolutionChat() {
     setSelectedContactId,
     fetchContacts,
     saveContact,
+    updateContact,
     fetchMessages,
     sendMessage,
     loading,

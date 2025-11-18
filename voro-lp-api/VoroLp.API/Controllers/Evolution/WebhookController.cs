@@ -1,16 +1,11 @@
-﻿using AutoMapper;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using System.Text.Json;
-using VoroLp.Application.DTOs.Evolution;
 using VoroLp.Application.DTOs.Evolution.Webhook;
-using VoroLp.Application.Services.Interfaces;
 using VoroLp.Application.Services.Interfaces.Evolution;
 using VoroLp.Domain.Entities.Evolution;
 using VoroLp.Domain.Enums;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace VoroLp.API.Controllers.Evolution
 {
@@ -66,7 +61,18 @@ namespace VoroLp.API.Controllers.Evolution
                     return NoContent();
 
                 else if (messageType == "contacts.update")
-                    return await ContactUpdate(payload.Deserialize<ContactUpdateEventDto>()!);
+                {
+                    if (payload.TryGetProperty("data", out var data))
+                    {
+                        return data.ValueKind switch
+                        {
+                            JsonValueKind.Array => await ContactUpdate(payload.Deserialize<ContactsUpdateEventDto>()!),
+                            JsonValueKind.Object => await ContactUpdate(payload.Deserialize<ContactUpdateEventDto>()!),
+                            _ => throw new Exception("Formato inválido!")
+                        };
+                    }
+
+                }
 
                 else if (messageType == "presence.update") return NoContent();
                 //return await PresenceUpdate(payload.Deserialize<PresenceUpdateEventDto>()!);
@@ -117,13 +123,17 @@ namespace VoroLp.API.Controllers.Evolution
             var fromMe = key.FromMe;
             var senderFromEnvelope = eventDto.Sender; // vem do ROOT do JSON (correto)
 
+            var pushName = string.IsNullOrWhiteSpace(data.PushName)
+                ? "Desconhecido"
+                : data.PushName;
+
             // Criar ou atualizar identificador de RemoteJid ↔ Alt
             ContactIdentifier? identifier = null;
 
             if (!string.IsNullOrWhiteSpace(remoteJidAlt))
             {
                 identifier = await _contactIdentifierService
-                    .GetOrCreateAsync(remoteJid, remoteJidAlt);
+                    .GetOrCreateAsync(pushName, remoteJid, remoteJidAlt);
 
                 remoteJid = identifier.Contact.RemoteJid;
             }
@@ -135,6 +145,7 @@ namespace VoroLp.API.Controllers.Evolution
             // -------- VALIDAR MENSAGEM ---------
             string? fileUrl = string.Empty;
             string? content = string.Empty;
+            string? base64 = string.Empty;
             MessageTypeEnum messageType = data.MessageType switch
             {
                 "imageMessage" => MessageTypeEnum.Image,
@@ -152,7 +163,7 @@ namespace VoroLp.API.Controllers.Evolution
 
             if (messageType == MessageTypeEnum.Image)
             {
-                content = data.Message?.Base64 ?? string.Empty;
+                base64 = data.Message?.Base64 ?? string.Empty;
                 mimeType = data.Message?.ImageMessage?.MimeType;
                 fileLength = data.Message?.ImageMessage?.FileLength?.High ?? data.Message?.ImageMessage?.FileLength?.Low ?? 0;
                 width = data.Message?.ImageMessage?.Width;
@@ -162,7 +173,7 @@ namespace VoroLp.API.Controllers.Evolution
             }
             else if (messageType == MessageTypeEnum.Video)
             {
-                content = data.Message?.Base64 ?? string.Empty;
+                base64 = data.Message?.Base64 ?? string.Empty;
                 mimeType = data.Message?.VideoMessage?.MimeType;
                 fileLength = data.Message?.VideoMessage?.FileLength?.High ?? data.Message?.VideoMessage?.FileLength?.Low ?? 0;
                 width = data.Message?.VideoMessage?.Width;
@@ -176,17 +187,11 @@ namespace VoroLp.API.Controllers.Evolution
                 content = data.Message?.ReactionMessage?.Text ?? string.Empty;
                 messageKey = data.Message?.ReactionMessage?.Key.Id ?? string.Empty;
             }
-            else
-            {
-                content = data.Message?.Conversation ?? string.Empty;
-            }
 
-            if (string.IsNullOrWhiteSpace(content))
+            content = data.Message?.Conversation ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(base64) && string.IsNullOrWhiteSpace(content))
                 return NoContent();
-
-            var pushName = string.IsNullOrWhiteSpace(data.PushName)
-                ? "Desconhecido"
-                : data.PushName;
 
             bool isGroup =
                 normalizedJid.EndsWith("@g.us");
@@ -234,6 +239,7 @@ namespace VoroLp.API.Controllers.Evolution
                     RemoteFrom = fromMe ? $"{senderFromEnvelope}" : $"{normalizedJid}",
                     RemoteTo = fromMe ? $"{normalizedJid}" : $"{senderFromEnvelope}",
                     Content = content,
+                    Base64 = base64,
                     IsFromMe = fromMe,
                     SentAt = DateTimeOffset.UtcNow,
                     Status = fromMe ? MessageStatusEnum.Sent : MessageStatusEnum.Delivered,
@@ -251,10 +257,10 @@ namespace VoroLp.API.Controllers.Evolution
                     Thumbnail = thumbnail
                 };
 
-                if (data.Message?.MessageContextInfo?.QuotedMessage != null)
+                if (data.ContextInfo?.QuotedMessage != null)
                 {
                     var quotedMessage = await _messageService
-                        .Query(m => m.ExternalId == data.Message.MessageContextInfo.StanzaId).FirstOrDefaultAsync();
+                        .Query(m => m.ExternalId == data.ContextInfo.StanzaId).FirstOrDefaultAsync();
 
                     if (quotedMessage != null)
                     {
@@ -266,7 +272,7 @@ namespace VoroLp.API.Controllers.Evolution
                 await _messageService.SaveChangesAsync();
             }
 
-            if (senderContact != null)
+            if (senderContact != null && senderContact.Id != Guid.Empty)
                 _contactService.Update(senderContact);
             
             _chatService.Update(chat);
@@ -314,13 +320,41 @@ namespace VoroLp.API.Controllers.Evolution
             if (!remoteJid.EndsWith("@s.whatsapp.net"))
                 return NoContent();
 
+            var contactIdentifier = await _contactIdentifierService
+                    .GetOrCreateAsync(data.PushName, remoteJid, remoteJid, data.ProfilePicUrl);
+
             await _contactService.UpdateContact(
-                remoteJid,
+                contactIdentifier.Contact,
                 data.PushName,
                 data.ProfilePicUrl
             );
 
             await _contactService.SaveChangesAsync();
+        
+            return Ok(new { success = true });
+        }
+
+        private async Task<IActionResult> ContactUpdate(ContactsUpdateEventDto eventDto)
+        {
+            foreach (var data in eventDto.Data)
+            {
+                var remoteJid = data.RemoteJid;
+
+                // Ignora JIDs que não são contatos
+                if (!remoteJid.EndsWith("@s.whatsapp.net"))
+                    return NoContent();
+
+                var contactIdentifier = await _contactIdentifierService
+                    .GetOrCreateAsync(data.PushName, remoteJid, remoteJid, data.ProfilePicUrl);
+
+                await _contactService.UpdateContact(
+                    contactIdentifier.Contact,
+                    data.PushName,
+                    data.ProfilePicUrl
+                );
+
+                await _contactService.SaveChangesAsync();
+            }
 
             return Ok(new { success = true });
         }

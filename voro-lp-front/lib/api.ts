@@ -17,6 +17,9 @@ export const API_CONFIG = {
     "Content-Type": "application/json",
     Accept: "application/json",
   },
+  HEADERS_FORM: {
+    Accept: "*/*",
+  },
 }
 
 // Função para obter o token do localStorage
@@ -45,8 +48,10 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
     const url = `${API_CONFIG.BASE_URL}${endpoint}`
     const token = getAuthToken()
 
+    const isFormData = options.body instanceof FormData;
+
     const headers = {
-      ...API_CONFIG.HEADERS,
+      ...(isFormData ? API_CONFIG.HEADERS_FORM : API_CONFIG.HEADERS),
       ...(token && { Authorization: `Bearer ${token}` }),
       ...options.headers,
     }

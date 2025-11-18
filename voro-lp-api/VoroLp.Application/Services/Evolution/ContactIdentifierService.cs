@@ -20,15 +20,21 @@ namespace VoroLp.Application.Services.Evolution
         }
 
         // Cria ou retorna um Contact já existente
-        public async Task<ContactIdentifier> GetOrCreateAsync(string remoteJid, string? remoteJidAlt)
+        public async Task<ContactIdentifier> GetOrCreateAsync(string pushName, string remoteJid, string? remoteJidAlt, string? profilePicture)
         {
+            Contact? contact = null;
+
             // 1. Se já existe o primary
             var existingIdentifier = await GetIdentifierAsync(remoteJid);
             if (existingIdentifier != null)
             {
+                contact = await contactRepository
+                    .Include(c => c.Identifiers)
+                    .FirstOrDefaultAsync(c => c.Id == existingIdentifier.ContactId);
+
                 // Alt pode ser novo -> criar
                 if (!string.IsNullOrWhiteSpace(remoteJidAlt))
-                    await EnsureIdentifier(existingIdentifier.Contact, remoteJidAlt);
+                    await EnsureIdentifier(contact!, remoteJidAlt);
 
                 return existingIdentifier;
             }
@@ -39,16 +45,22 @@ namespace VoroLp.Application.Services.Evolution
                 var altIdentifier = await GetIdentifierAsync(remoteJidAlt);
                 if (altIdentifier != null)
                 {
+                    contact = await contactRepository
+                        .Include(c => c.Identifiers)
+                        .FirstOrDefaultAsync(c => c.Id == altIdentifier.ContactId);
+
                     // Adicionar remoteJid como novo identifier
-                    await EnsureIdentifier(altIdentifier.Contact, remoteJid);
+                    await EnsureIdentifier(contact!, remoteJid);
                     return altIdentifier;
                 }
             }
 
             // 3. Nenhum existe → criar novo Contact
-            var contact = new Contact
+            contact = new Contact
             {
+                DisplayName = pushName,
                 RemoteJid = remoteJid,
+                ProfilePictureUrl = profilePicture,
                 Number = ExtractNumber(remoteJid)
             };
 

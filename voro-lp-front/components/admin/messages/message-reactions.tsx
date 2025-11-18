@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageReactionDto } from "@/types/DTOs/MessageReactionDto.interface";
+import { MessageReactionDto } from "@/types/DTOs/messageReactionDto.interface";
 import { cn } from "@/lib/utils";
 
 interface MessageReactionsProps {

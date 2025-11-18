@@ -3,13 +3,14 @@ import { MessageTypeEnum } from "../Enums/messageTypeEnum.enum";
 import { ChatDto } from "./chatDto.interface";
 import { ContactDto } from "./contactDto.interface";
 import { GroupDto } from "./groupDto.interface";
-import { MessageReactionDto } from "./MessageReactionDto.interface";
+import { MessageReactionDto } from "./messageReactionDto.interface";
 
 export interface MessageDto {
   id?: string;
   externalId?: string;
   remoteFrom?: string;
   remoteTo?: string;
+  base64?: string;
   content: string;
   rawJson?: string;
   sentAt: Date;
@@ -30,5 +31,6 @@ export interface MessageDto {
   group?: GroupDto;
   chatId?: string;
   chat?: ChatDto;
+  quotedMessage?: MessageDto;
   messageReactions: MessageReactionDto[];
 }

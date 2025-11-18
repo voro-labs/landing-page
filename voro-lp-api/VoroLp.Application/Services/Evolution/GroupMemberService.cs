@@ -1,5 +1,4 @@
-﻿using AutoMapper;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using VoroLp.Application.Services.Base;
 using VoroLp.Application.Services.Interfaces.Evolution;
 using VoroLp.Domain.Entities.Evolution;

@@ -2,6 +2,7 @@
 {
     public class MessageRequestDto
     {
-        public string Content { get; set; } = string.Empty;
+        public string Number { get; set; } = string.Empty;
+        public string Conversation { get; set; } = string.Empty;
     }
 }

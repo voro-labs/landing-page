@@ -1,4 +1,6 @@
-﻿namespace VoroLp.Application.DTOs.Evolution
+﻿using Microsoft.AspNetCore.Http;
+
+namespace VoroLp.Application.DTOs.Evolution
 {
     public class ContactDto
     {
@@ -8,6 +10,9 @@
 
         public string? DisplayName { get; set; }
         public string? ProfilePictureUrl { get; set; }
+        
+        public string? InstanceName { get; set; }
+        public IFormFile? ProfilePicture { get; set; }
 
         public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 

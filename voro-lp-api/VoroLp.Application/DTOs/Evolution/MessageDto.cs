@@ -11,6 +11,7 @@ namespace VoroLp.Application.DTOs.Evolution
         public string RemoteTo { get; set; } = string.Empty;
 
         public string Content { get; set; } = string.Empty;
+        public string Base64 { get; set; } = string.Empty;
         public string? RawJson { get; set; }
 
         public DateTimeOffset SentAt { get; set; } = DateTimeOffset.UtcNow;
@@ -37,6 +38,9 @@ namespace VoroLp.Application.DTOs.Evolution
 
         public Guid ChatId { get; set; }
         public ChatDto Chat { get; set; } = null!;
+
+        public Guid? QuotedMessageId { get; set; }
+        public MessageDto? QuotedMessage { get; set; }
 
         public ICollection<MessageReactionDto> MessageReactions { get; set; } = [];
     }

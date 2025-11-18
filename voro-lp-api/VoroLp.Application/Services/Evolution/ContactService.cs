@@ -35,24 +35,25 @@ namespace VoroLp.Application.Services.Evolution
         }
 
         public async Task<Contact?> UpdateContact(
-            string remoteJid,
+            Contact contact,
             string? displayName,
             string? profilePicture)
         {
-            var contact = await this
-                .Query(c => c.RemoteJid == remoteJid)
-                .FirstOrDefaultAsync();
-
             if (contact != null)
             {
                 if (!string.IsNullOrEmpty(displayName))
                     contact.DisplayName = displayName;
-                
-                if (!string.IsNullOrEmpty(profilePicture))
+
+                if (!string.IsNullOrEmpty(profilePicture) &&
+                    (string.IsNullOrEmpty(contact.ProfilePictureUrl) 
+                    || contact.ProfilePictureUrl is not null && !contact.ProfilePictureUrl.StartsWith("data:")))
                     contact.ProfilePictureUrl = profilePicture;
 
                 contact.UpdatedAt = DateTimeOffset.UtcNow;
+                
+                this.Update(contact);
             }
+
 
             return contact;
         }

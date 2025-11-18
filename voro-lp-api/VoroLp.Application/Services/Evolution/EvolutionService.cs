@@ -18,14 +18,15 @@ namespace VoroLp.Application.Services.Evolution
         private readonly IChatService _chatService;
         private readonly IGroupService _groupService;
         private readonly IContactService _contactService;
+        private readonly IContactIdentifierService _contactIdentifierService;
         private readonly IInstanceService _instanceService;
         private readonly IGroupMemberService _groupMemberService;
 
         public EvolutionService(IHttpClientFactory httpClientFactory,
             IOptions<EvolutionUtil> evolutionUtil, ILogger<EvolutionService> logger,
             IChatService chatService, IGroupService groupService, 
-            IContactService contactService, IInstanceService instanceService,
-            IGroupMemberService groupMemberService)
+            IContactService contactService, IContactIdentifierService contactIdentifierService,
+            IInstanceService instanceService, IGroupMemberService groupMemberService)
         {
             _evolutionUtil = evolutionUtil.Value;
             _logger = logger;
@@ -35,13 +36,14 @@ namespace VoroLp.Application.Services.Evolution
             _contactService = contactService;
             _instanceService = instanceService;
             _groupMemberService = groupMemberService;
+            _contactIdentifierService = contactIdentifierService;
 
             _httpClient = httpClientFactory.CreateClient(nameof(EvolutionService));
             _httpClient.BaseAddress = new Uri(_evolutionUtil.BaseUrl);
             _httpClient.DefaultRequestHeaders.Add("apikey", _evolutionUtil.Key);
         }
 
-        public async Task<(Contact? senderContact, Group? group, Chat chat)> CreateChatAndGroupOrContactAsync(
+        public async Task<(Contact senderContact, Group? group, Chat chat)> CreateChatAndGroupOrContactAsync(
             string instanceName, string normalizedJid, string pushName,
             string remoteJid, bool isGroup = false, string? participant = "")
         {
@@ -52,7 +54,7 @@ namespace VoroLp.Application.Services.Evolution
 
             // -------- CONTATO DO REMETENTE ---------
 
-            Contact senderContact;
+            ContactIdentifier contactIdentifier;
             Group? group = null;
 
             if (isGroup)
@@ -68,12 +70,11 @@ namespace VoroLp.Application.Services.Evolution
                 var partIdentifier = await _contactService.FindByAnyAsync(participantJid);
                 var normalizedParticipantJid = partIdentifier?.RemoteJid ?? participantJid;
 
-                // Criar contato do membro
-                senderContact = await _contactService
-                    .GetOrCreateContact(normalizedParticipantJid, pushName);
+                contactIdentifier = await _contactIdentifierService
+                    .GetOrCreateAsync(pushName, normalizedParticipantJid, remoteJid, "");
 
                 await _contactService.UpdateContact(
-                    remoteJid,
+                    contactIdentifier.Contact,
                     pushName,
                     ""
                 );
@@ -82,7 +83,7 @@ namespace VoroLp.Application.Services.Evolution
                 group = await _groupService.GetOrCreateGroup("Não Informado", normalizedJid);
 
                 // Garantir que o contato é membro do grupo
-                await _groupMemberService.EnsureGroupMembership(group, senderContact);
+                await _groupMemberService.EnsureGroupMembership(group, contactIdentifier.Contact);
 
                 group.LastMessageAt = DateTimeOffset.UtcNow;
             }
@@ -95,20 +96,14 @@ namespace VoroLp.Application.Services.Evolution
                 var sendIdentifier = await _contactService.FindByAnyAsync(senderJid);
                 var normalizedSenderJid = senderJid;
 
-                senderContact = await _contactService
-                    .GetOrCreateContact(normalizedSenderJid, pushName);
+                contactIdentifier = await _contactIdentifierService
+                    .GetOrCreateAsync(pushName, normalizedSenderJid, remoteJid);
 
-                await _contactService.UpdateContact(
-                    remoteJid,
-                    pushName,
-                    ""
-                );
-
-                chat.ContactId = senderContact.Id;
-                senderContact.LastMessageAt = DateTimeOffset.UtcNow;
+                chat.ContactId = contactIdentifier.Contact.Id;
+                contactIdentifier.Contact.LastMessageAt = DateTimeOffset.UtcNow;
             }
 
-            return (senderContact, group, chat);
+            return (contactIdentifier.Contact, group, chat);
         }
 
         public async Task<IEnumerable<ContactEventDto>> GetContactsAsync()
@@ -147,10 +142,50 @@ namespace VoroLp.Application.Services.Evolution
             return JsonSerializer.Deserialize<InstanceEventDto>(responseContent) ?? new InstanceEventDto();
         }
 
-        public async Task<string> SendMessageAsync(string contactNumber, MessageRequestDto request)
+        public async Task<string> SendMessageAsync(MessageRequestDto request)
         {
             var url = $"/message/sendText/{_evolutionUtil.Instance}";
-            var payload = new { number = contactNumber, text = request.Content };
+            var payload = new { number = request.Number, text = request.Conversation };
+            var response = await _httpClient.PostAsJsonAsync(url, payload);
+            return await response.Content.ReadAsStringAsync();
+        }
+
+        public async Task<string> SendQuotedMessageAsync(QuotedRequestDto request)
+        {
+            var url = $"/message/sendText/{_evolutionUtil.Instance}";
+            var payload = new { number = request.Number, quoted = request };
+            var response = await _httpClient.PostAsJsonAsync(url, payload);
+            return await response.Content.ReadAsStringAsync();
+        }
+
+        public async Task<string> SendMediaMessageAsync(MediaRequestDto request)
+        {
+            var url = $"/message/sendMedia/{_evolutionUtil.Instance}";
+            var payload = request;
+            var response = await _httpClient.PostAsJsonAsync(url, payload);
+            return await response.Content.ReadAsStringAsync();
+        }
+
+        public async Task<string> SendLocationMessageAsync(LocationRequestDto request)
+        {
+            var url = $"/message/sendLocation/{_evolutionUtil.Instance}";
+            var payload = request;
+            var response = await _httpClient.PostAsJsonAsync(url, payload);
+            return await response.Content.ReadAsStringAsync();
+        }
+
+        public async Task<string> SendContactMessageAsync(ContactRequestDto request)
+        {
+            var url = $"/message/sendContact/{_evolutionUtil.Instance}";
+            var payload = request;
+            var response = await _httpClient.PostAsJsonAsync(url, payload);
+            return await response.Content.ReadAsStringAsync();
+        }
+
+        public async Task<string> SendReactionMessageAsync(ReactionRequestDto request)
+        {
+            var url = $"/message/sendReaction/{_evolutionUtil.Instance}";
+            var payload = request;
             var response = await _httpClient.PostAsJsonAsync(url, payload);
             return await response.Content.ReadAsStringAsync();
         }

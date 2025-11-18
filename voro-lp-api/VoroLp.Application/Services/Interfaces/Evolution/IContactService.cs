@@ -9,7 +9,6 @@ namespace VoroLp.Application.Services.Interfaces.Evolution
         Task AddAsync(ContactDto contactDto);
         Task AddRangeAsync(IEnumerable<ContactDto> contactDtos);
         Task<Contact?> FindByAnyAsync(string jid);
-        Task<Contact?> UpdateContact(string remoteJid, string? displayName, string? profilePicture);
-        Task<Contact> GetOrCreateContact(string remoteJid, string displayName);
+        Task<Contact?> UpdateContact(Contact contact, string? displayName, string? profilePicture);
     }
 }

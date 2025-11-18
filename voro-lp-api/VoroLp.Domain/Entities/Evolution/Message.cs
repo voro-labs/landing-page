@@ -11,6 +11,7 @@ namespace VoroLp.Domain.Entities.Evolution
         public string RemoteTo { get; set; } = string.Empty;
 
         public string Content { get; set; } = string.Empty;
+        public string Base64 { get; set; } = string.Empty;
         public string? RawJson { get; set; }
 
         public DateTimeOffset SentAt { get; set; } = DateTimeOffset.UtcNow;

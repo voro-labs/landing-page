@@ -21,7 +21,7 @@ export function MessageContent({ message, isFromMe }: MessageContentProps) {
         return (
           <div className="relative rounded-lg overflow-hidden mb-2">
             <Image
-              src={message.fileUrl || "/placeholder.svg?height=300&width=400"}
+              src={message.base64 ? `data:${message.mimeType};base64,${message.base64}` : "/placeholder.svg?height=300&width=400"}
               alt="Image message"
               width={400}
               height={300}
@@ -34,10 +34,12 @@ export function MessageContent({ message, isFromMe }: MessageContentProps) {
         return (
           <div className="relative rounded-lg overflow-hidden mb-2">
             <video
-              src={message.fileUrl}
+              src={`data:video/mp4;base64,${message.base64}`}
               controls
               className="max-w-full h-auto rounded-lg"
-              poster={message.thumbnail?.toString() || ''}
+              poster={message.thumbnail
+                ? `data:image/jpeg;base64,${message.thumbnail}`
+                : ""}
             >
               Seu navegador não suporta vídeos.
             </video>
@@ -137,7 +139,7 @@ export function MessageContent({ message, isFromMe }: MessageContentProps) {
 
   return (
     <div>
-      {/* {message.quotedMessage && (
+      {message.quotedMessage && (
         <div className={`mb-2 pl-3 border-l-2 ${isFromMe ? 'border-primary-foreground/50' : 'border-primary/50'} py-1`}>
           <p className={`text-xs font-medium ${isFromMe ? 'text-primary-foreground/80' : 'text-primary'}`}>
             {message.quotedMessage.isFromMe ? "Você" : message.quotedMessage.contact?.displayName || "Contato"}
@@ -146,7 +148,7 @@ export function MessageContent({ message, isFromMe }: MessageContentProps) {
             {message.quotedMessage.content}
           </p>
         </div>
-      )} */}
+      )}
       
       {renderMediaContent()}
       

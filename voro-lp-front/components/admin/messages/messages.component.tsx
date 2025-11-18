@@ -14,6 +14,7 @@ export default function Messages() {
     fetchMessages,
     sendMessage,
     saveContact,
+    updateContact,
     loading,
     error,
   } = useEvolutionChat()
@@ -45,6 +46,9 @@ export default function Messages() {
             contact={contacts.find((c) => c.id === selectedContactId)}
             messages={selectedMessages}
             onSendMessage={(text) => selectedContactId && sendMessage(selectedContactId, text)}
+            onEditContact={(contactId, name, phoneNumber, profilePicture) => {
+              updateContact(contactId, name, phoneNumber, '', profilePicture)
+            }}
           />
         </div>
       </div>
