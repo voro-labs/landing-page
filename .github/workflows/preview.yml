@@ -50,10 +50,11 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
       - name: Comment preview URL on PR (Vercel-style)
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: peter-evans/create-or-update-comment@v3
         with:
-          recreate: true
-          message: |
+          token: ${{ secrets.BOT_GH_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
             **🚀 Preview environment for this PR**
 
             | Project | Deployment | Preview | Updated (UTC) |
