@@ -52,7 +52,7 @@ jobs:
       - name: Comment preview URL on PR (Vercel-style)
         uses: peter-evans/create-or-update-comment@v3
         with:
-          token: ${{ secrets.BOT_GH_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             **🚀 Preview environment for this PR**
