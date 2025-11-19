@@ -2,16 +2,23 @@ import type { ResponseViewModel } from "@/types/response.interface"
 
 // Configurações centralizadas da API
 export const API_CONFIG = {
-  BASE_URL: process.env.NEXT_PUBLIC_API_URL,
+  BASE_URL: `${process.env.NEXT_PUBLIC_BASE_URL}/${process.env.NEXT_PUBLIC_API_URL}`,
   ENDPOINTS: {
     SIGNIN: "/auth/sign-in",
     RESET_PASSWORD: "/auth/reset-password",
     FORGOT_PASSWORD: "/auth/forgot-password",
-    LANDING_PAGE_CONFIG: "/landing-page-config"
+    LANDING_PAGE_CONFIG: "/landing-page-config",
+    CHAT: "/chat",
+    MESSAGE: "/message",
+    CONTACT: "/contact",
+    INSTANCE: "/instance"
   },
   HEADERS: {
     "Content-Type": "application/json",
     Accept: "application/json",
+  },
+  HEADERS_FORM: {
+    Accept: "*/*",
   },
 }
 
@@ -41,8 +48,10 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
     const url = `${API_CONFIG.BASE_URL}${endpoint}`
     const token = getAuthToken()
 
+    const isFormData = options.body instanceof FormData;
+
     const headers = {
-      ...API_CONFIG.HEADERS,
+      ...(isFormData ? API_CONFIG.HEADERS_FORM : API_CONFIG.HEADERS),
       ...(token && { Authorization: `Bearer ${token}` }),
       ...options.headers,
     }
