@@ -74,8 +74,8 @@ namespace VoroLp.API.Controllers.Evolution
 
                 }
 
-                else if (messageType == "presence.update") return NoContent();
-                //return await PresenceUpdate(payload.Deserialize<PresenceUpdateEventDto>()!);
+                else if (messageType == "presence.update")
+                    return await PresenceUpdate(payload.Deserialize<PresenceUpdateEventDto>()!);
 
                 else if (messageType == "chats.set")
                     return NoContent();
@@ -208,10 +208,10 @@ namespace VoroLp.API.Controllers.Evolution
             var (senderContact, group, chat) = await _evolutionService.CreateChatAndGroupOrContactAsync(
                 eventDto.Instance, normalizedJid, pushName, remoteJid, isGroup, key.Participant);
 
+            Message? message = await _messageService.Query(item => item.ExternalId == messageKey).FirstOrDefaultAsync();
+
             if (messageType == MessageTypeEnum.Reaction)
             {
-                var message = await _messageService.Query(item => item.ExternalId == messageKey).FirstOrDefaultAsync();
-
                 if (message == null)
                 {
                     return NoContent();
@@ -233,29 +233,51 @@ namespace VoroLp.API.Controllers.Evolution
             {
                 // -------- CRIAR MENSAGEM ---------
 
-                var message = new Message
+                if (message == null)
                 {
-                    ExternalId = key.Id,
-                    RemoteFrom = fromMe ? $"{senderFromEnvelope}" : $"{normalizedJid}",
-                    RemoteTo = fromMe ? $"{normalizedJid}" : $"{senderFromEnvelope}",
-                    Content = content,
-                    Base64 = base64,
-                    IsFromMe = fromMe,
-                    SentAt = DateTimeOffset.UtcNow,
-                    Status = fromMe ? MessageStatusEnum.Sent : MessageStatusEnum.Delivered,
-                    RawJson = JsonSerializer.Serialize(data),
-                    Type = messageType,
-                    FileUrl = fileUrl,
-                    ChatId = chat.Id,
-                    ContactId = senderContact?.Id,
-                    GroupId = group?.Id,
-                    MimeType = mimeType,
-                    FileLength = fileLength,
-                    Width = width,
-                    Height = height,
-                    DurationSeconds = durationSeconds,
-                    Thumbnail = thumbnail
-                };
+                    message = new Message
+                    {
+                        ExternalId = key.Id,
+                        RemoteFrom = fromMe ? $"{senderFromEnvelope}" : $"{normalizedJid}",
+                        RemoteTo = fromMe ? $"{normalizedJid}" : $"{senderFromEnvelope}",
+                        Content = content,
+                        Base64 = base64,
+                        IsFromMe = fromMe,
+                        SentAt = DateTimeOffset.UtcNow,
+                        Status = fromMe ? MessageStatusEnum.Sent : MessageStatusEnum.Delivered,
+                        RawJson = JsonSerializer.Serialize(data),
+                        Type = messageType,
+                        FileUrl = fileUrl,
+                        ChatId = chat.Id,
+                        ContactId = senderContact?.Id,
+                        GroupId = group?.Id,
+                        MimeType = mimeType,
+                        FileLength = fileLength,
+                        Width = width,
+                        Height = height,
+                        DurationSeconds = durationSeconds,
+                        Thumbnail = thumbnail
+                    };
+
+                    await _messageService.AddAsync(message);
+                }
+                else
+                {
+                    message.Content = content;
+                    message.Base64 = base64;
+                    message.Status = fromMe ? MessageStatusEnum.Sent : MessageStatusEnum.Delivered;
+                    message.RawJson = JsonSerializer.Serialize(data);
+                    message.Type = messageType;
+                    message.FileUrl = fileUrl;
+                    message.MimeType = mimeType;
+                    message.FileLength = fileLength;
+                    message.Width = width;
+                    message.Height = height;
+                    message.DurationSeconds = durationSeconds;
+                    message.Thumbnail = thumbnail;
+
+                    _messageService.Update(message);
+                }
 
                 if (data.ContextInfo?.QuotedMessage != null)
                 {
@@ -268,7 +290,6 @@ namespace VoroLp.API.Controllers.Evolution
                     }
                 }
 
-                await _messageService.AddAsync(message);
                 await _messageService.SaveChangesAsync();
             }
 
@@ -359,29 +380,28 @@ namespace VoroLp.API.Controllers.Evolution
             return Ok(new { success = true });
         }
 
-        //private async Task<IActionResult> PresenceUpdate(PresenceUpdateEventDto eventDto)
-        //{
-        //    var data = eventDto.Data;
+        private async Task<IActionResult> PresenceUpdate(PresenceUpdateEventDto eventDto)
+        {
+            var data = eventDto.Data;
 
-        //    foreach (var presence in data.Presences)
-        //    {
-        //        var remoteJid = presence.Key;
-        //        var presenceInfo = presence.Value.LastKnownPresence;
+            foreach (var presence in data.Presences)
+            {
+                var remoteJid = presence.Key;
+                var presenceInfo = presence.Value.LastKnownPresence;
 
-        //        // Garante que o contato existe
-        //        var contact = await _contactService.CreateOrUpdateContact(
-        //            remoteJid,
-        //            displayName: null,
-        //            profilePicture: null
-        //        );
+                var contactIdentifier = await _contactIdentifierService
+                    .GetOrCreateAsync("", remoteJid, remoteJid, "");
 
-        //        // Atualiza informações de presença
-        //        UpdateContactPresence(contact, presenceInfo);
-        //    }
+                var contact = contactIdentifier.Contact;
 
-        //    await _contactService.SaveChangesAsync();
-        //    return Ok(new { success = true });
-        //}
+                contact.LastKnownPresence = presenceInfo;
+                contact.LastPresenceAt = DateTimeOffset.UtcNow;
+
+                await _contactService.SaveChangesAsync();
+            }
+
+            return Ok(new { success = true });
+        }
 
 
         //private async Task<IActionResult> ChatUpdate(ChatUpdateEventDto eventDto)
