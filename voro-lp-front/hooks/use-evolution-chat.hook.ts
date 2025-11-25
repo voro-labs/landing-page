@@ -169,6 +169,52 @@ export function useEvolutionChat() {
     }
   }, [])
 
+  const sendAttachment = useCallback(async (contactId: string, attachment: File) => {
+    if (!contactId || !attachment) return
+    setError(null)
+
+    try {
+
+      const form = new FormData();
+      
+      form.append("attachment", attachment);
+
+      const response = await secureApiCall<MessageDto>(`${API_CONFIG.ENDPOINTS.CHAT}/messages/${contactId}/send/attachment`, {
+        method: "POST",
+        body: form,
+      })
+
+      if (response.hasError) throw new Error(response.message ?? "Erro ao enviar anexo")
+      
+      const url = URL.createObjectURL(attachment);
+
+      let newMessage: MessageDto = {
+        id: Date.now().toString(),
+        content: "",
+        base64: url,
+        sentAt: new Date(),
+        status: MessageStatusEnum.Created,
+        isFromMe: true,
+        contactId: contactId,
+        contact: {
+          lastMessage: "Anexo enviado",
+          lastMessageAt: Date.now.toString()
+        } as ContactDto,
+        messageReactions: []
+      };
+
+      if (response.data)
+        newMessage = response.data;
+
+      setMessages((prev) => ({
+        ...prev,
+        [contactId]: [...(prev[contactId] || []), newMessage],
+      }))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro desconhecido");
+    }
+  }, [])
+
   // 🔹 Deletar mensagem
   const deleteMessage = useCallback(async (contactId: string, message: MessageDto) => {
     if (!contactId || !message.id) return
@@ -326,6 +372,7 @@ export function useEvolutionChat() {
     updateContact,
     fetchMessages,
     sendMessage,
+    sendAttachment,
     deleteMessage,
     forwardMessage,
     sendQuotedMessage,

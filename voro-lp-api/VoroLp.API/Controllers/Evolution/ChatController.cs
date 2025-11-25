@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using VoroLp.API.Extensions;
 using VoroLp.API.ViewModels;
+using VoroLp.Application.DTOs;
 using VoroLp.Application.DTOs.Evolution;
 using VoroLp.Application.DTOs.Evolution.Webhook;
 using VoroLp.Application.DTOs.Request;
@@ -147,8 +148,17 @@ namespace VoroLp.API.Controllers.Evolution
                 var profilePicture = "";
 
                 if (request.ProfilePicture != null)
-                    profilePicture = await request.ProfilePicture!.OpenReadStream()!
-                        .ToBase64Async(request.ProfilePicture.ContentType);
+                {
+                    var media = new MediaDto(request.ProfilePicture);
+
+                    if (media.MediaStream != null)
+                    {
+                        string? mediaBase64 = await media.MediaStream.ToBase64Async(media.Mimetype);
+
+                        profilePicture = $"{mediaBase64}";
+                    }
+                }
+                    
 
                 await _contactService.UpdateContact(senderContact, request.DisplayName, profilePicture);
 
@@ -336,6 +346,84 @@ namespace VoroLp.API.Controllers.Evolution
                 await _contactService.SaveChangesAsync();
 
                 messageDto.QuotedMessage = _mapper.Map<MessageDto>(message);
+
+                return ResponseViewModel<MessageDto>
+                    .Success(messageDto)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<MessageDto>
+                    .Fail(ex.Message)
+                    .ToActionResult();
+            }
+        }
+
+        // ======================================================
+        // POST → Enviar resposta para mensagem
+        // ======================================================
+        [HttpPost("messages/{contactId:guid}/send/attachment")]
+        public async Task<IActionResult> SendAttachmentMessage(Guid contactId, [FromForm] MediaDto request)
+        {
+            try
+            {
+                var contact = await _contactService.Query(c => c.Id == contactId).FirstOrDefaultAsync();
+
+                var chat = await _chatService.Query(chat => chat.ContactId == contactId).FirstOrDefaultAsync();
+
+                if (chat == null)
+                    return NoContent();
+
+                if (contact == null)
+                    return BadRequest("Contato não encontrado!");
+
+                if (string.IsNullOrWhiteSpace(contact.Number))
+                    return BadRequest("Contato não possui número cadastrado.");
+
+                if (request.Attachment == null)
+                    return BadRequest("Anexo não pode ser nulo.");
+
+                MediaRequestDto? mediaRequest = null;
+
+                if (request.MediaStream != null)
+                {
+                    string? mediaBase64 = await request.MediaStream.ToBase64Async(request.Mimetype);
+
+                    mediaRequest = new MediaRequestDto(contact.Number, "", $"{mediaBase64}", request);
+                }
+
+                if (mediaRequest == null)
+                    return BadRequest("Anexo não pode ser nulo.");
+
+                // EvolutionService retorna STRING → ajustado
+                var responseString = await _evolutionService.SendMediaMessageAsync(mediaRequest);
+
+                var response = JsonSerializer.Deserialize<MessageUpsertDataDto>(responseString);
+
+                var messageDto = new MessageDto()
+                {
+                    ChatId = chat.Id,
+                    ContactId = contact.Id,
+                    Content = $"{response?.Message.Conversation}",
+                    ExternalId = $"{response?.Key.Id}",
+                    IsFromMe = true,
+                    RawJson = responseString,
+                    RemoteFrom = "",
+                    RemoteTo = contact.RemoteJid,
+                    SentAt = DateTimeOffset.UtcNow,
+                    Status = MessageStatusEnum.Sent,
+                    Type = MessageTypeEnum.Image
+                };
+
+                await _messageService.AddAsync(messageDto);
+
+                contact.LastMessageAt = DateTimeOffset.UtcNow;
+                
+                _contactService.Update(contact);
+
+                await _messageService.SaveChangesAsync();
+                
+                await _contactService.SaveChangesAsync();
 
                 return ResponseViewModel<MessageDto>
                     .Success(messageDto)

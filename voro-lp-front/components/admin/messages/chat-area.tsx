@@ -30,6 +30,7 @@ interface ChatAreaProps {
   contact?: ContactDto;
   messages: MessageDto[];
   onSendMessage: (text: string, quotedMessage?: MessageDto) => void;
+  onSendAttachment: (file: File) => void;
   onReact?: (message: MessageDto, emoji: string) => void;
   onReply?: (message: MessageDto) => void;
   onForward?: (message: MessageDto) => void;
@@ -42,6 +43,7 @@ export function ChatArea({
   contact,
   messages,
   onSendMessage,
+  onSendAttachment,
   onReact,
   onReply,
   onForward,
@@ -79,7 +81,10 @@ export function ChatArea({
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    e.target.value = "";
+    if (file) {
+      e.target.value = "";
+      onSendAttachment(file!);
+    }
   }
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {

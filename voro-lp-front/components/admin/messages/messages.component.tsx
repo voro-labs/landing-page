@@ -26,6 +26,7 @@ export default function Messages() {
     setSelectedContactId,
     fetchMessages,
     sendMessage,
+    sendAttachment,
     deleteMessage,
     forwardMessage,
     sendQuotedMessage,
@@ -82,6 +83,10 @@ export default function Messages() {
               }
 
               sendMessage(selectedContactId, text)
+            }}
+            onSendAttachment={(file) => {
+              if (!selectedContactId) return;
+              sendAttachment(selectedContactId, file)
             }}
             onReact={(message, emoji) => {
               if (!selectedContactId) return;
