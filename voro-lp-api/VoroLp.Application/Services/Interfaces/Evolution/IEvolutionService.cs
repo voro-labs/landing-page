@@ -19,6 +19,7 @@ namespace VoroLp.Application.Services.Interfaces.Evolution
         Task<string> SendLocationMessageAsync(LocationRequestDto request);
         Task<string> SendReactionMessageAsync(ReactionRequestDto request);
         Task<string> SendContactMessageAsync(ContactRequestDto request);
-        Task<string> SendQuotedMessageAsync(QuotedRequestDto request);
+        Task<string> SendQuotedMessageAsync(MessageRequestDto request);
+        Task<string> DeleteMessageAsync(DeleteRequestDto request);
     }
 }

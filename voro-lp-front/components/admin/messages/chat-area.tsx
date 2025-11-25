@@ -28,7 +28,7 @@ import { ContactDto } from "@/types/DTOs/contactDto.interface";
 interface ChatAreaProps {
   contact?: ContactDto;
   messages: MessageDto[];
-  onSendMessage: (text: string, quotedMessageId?: string) => void;
+  onSendMessage: (text: string, quotedMessage?: MessageDto) => void;
   onReact?: (message: MessageDto, emoji: string) => void;
   onReply?: (message: MessageDto) => void;
   onForward?: (message: MessageDto) => void;
@@ -48,6 +48,7 @@ export function ChatArea({
   isTyping = false,
   onEditContact,
 }: ChatAreaProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const [inputValue, setInputValue] = useState("");
   const [quotedMessage, setQuotedMessage] = useState<MessageDto | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -88,7 +89,7 @@ export function ChatArea({
     if (!inputValue.trim()) return;
 
     if (quotedMessage?.id) {
-      onSendMessage(inputValue, quotedMessage.id)
+      onSendMessage(inputValue, quotedMessage)
     } else {
       onSendMessage(inputValue)
     }
@@ -98,6 +99,7 @@ export function ChatArea({
   };
 
   const handleReply = (message: MessageDto) => {
+    inputRef.current?.focus();
     setQuotedMessage(message);
     onReply?.(message);
   };
@@ -151,13 +153,13 @@ export function ChatArea({
           <Button variant="ghost" size="icon" onClick={() => setIsEditDialogOpen(true)}>
             <Edit className="h-5 w-5" />
           </Button>
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" disabled>
             <Phone className="h-5 w-5" />
           </Button>
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" disabled>
             <Video className="h-5 w-5" />
           </Button>
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" disabled>
             <MoreVertical className="h-5 w-5" />
           </Button>
         </div>
@@ -283,6 +285,7 @@ export function ChatArea({
           </Button>
 
           <Input
+            ref={inputRef}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             placeholder="Digite uma mensagem..."

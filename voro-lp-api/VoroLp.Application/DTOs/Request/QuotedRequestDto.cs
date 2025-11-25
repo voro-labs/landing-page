@@ -1,6 +1,6 @@
 ﻿namespace VoroLp.Application.DTOs.Request
 {
-    public class QuotedRequestDto : MessageRequestDto
+    public class QuotedRequestDto
     {
         public QuotedKeyRequestDto Key { get; set; } = null!;
     }

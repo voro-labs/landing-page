@@ -26,6 +26,7 @@ namespace VoroLp.API.Controllers.Evolution
         IEvolutionService evolutionService,
         IInstanceService instanceService,
         IGroupMemberService groupMemberService,
+        IMessageReactionService messageReactionService,
         IContactIdentifierService contactIdentifierService,
         IMapper mapper) : ControllerBase
     {
@@ -36,6 +37,7 @@ namespace VoroLp.API.Controllers.Evolution
         private readonly IEvolutionService _evolutionService = evolutionService;
         private readonly IInstanceService _instanceService = instanceService;
         private readonly IGroupMemberService _groupMemberService = groupMemberService;
+        private readonly IMessageReactionService _messageReactionService = messageReactionService;
         private readonly IContactIdentifierService _contactIdentifierService = contactIdentifierService;
         private readonly IMapper _mapper = mapper;
 
@@ -174,10 +176,13 @@ namespace VoroLp.API.Controllers.Evolution
         {
             try
             {
-                var messages = await _messageService.Query(m => m.ContactId == contactId)
+                var messages = await _messageService
+                    .Query(m => 
+                        m.ContactId == contactId &&
+                        m.Status != MessageStatusEnum.Deleted)
                     .Include(m => m.QuotedMessage)
                         .ThenInclude(q => q!.Contact)
-                    .Include(m => m.Reactions)
+                    .Include(m => m.MessageReactions)
                     .OrderBy(m => m.SentAt)
                     .ToListAsync();
 
@@ -267,7 +272,7 @@ namespace VoroLp.API.Controllers.Evolution
         // POST → Enviar resposta para mensagem
         // ======================================================
         [HttpPost("messages/{contactId:guid}/send/quoted")]
-        public async Task<IActionResult> SendQuotedMessage(Guid contactId, [FromBody] QuotedRequestDto request)
+        public async Task<IActionResult> SendQuotedMessage(Guid contactId, [FromBody] MessageRequestDto request)
         {
             try
             {
@@ -275,7 +280,7 @@ namespace VoroLp.API.Controllers.Evolution
 
                 var chat = await _chatService.Query(chat => chat.ContactId == contactId).FirstOrDefaultAsync();
 
-                _ = Guid.TryParse(request.Key.Id, out var guid);
+                _ = Guid.TryParse(request.Quoted?.Key.Id, out var guid);
 
                 var message = await _messageService.Query(m => m.Id == guid && m.ContactId == contactId).FirstOrDefaultAsync();
 
@@ -296,7 +301,8 @@ namespace VoroLp.API.Controllers.Evolution
 
                 request.Number = contact.Number;
 
-                request.Key.Id = message.ExternalId;
+                if (request.Quoted != null)
+                    request.Quoted.Key.Id = message.ExternalId;
 
                 // EvolutionService retorna STRING → ajustado
                 var responseString = await _evolutionService.SendQuotedMessageAsync(request);
@@ -338,6 +344,199 @@ namespace VoroLp.API.Controllers.Evolution
             catch (Exception ex)
             {
                 return ResponseViewModel<MessageDto>
+                    .Fail(ex.Message)
+                    .ToActionResult();
+            }
+        }
+
+        // ======================================================
+        // POST → Enviar reação para mensagem
+        // ======================================================
+        [HttpPost("messages/{contactId:guid}/send/reaction")]
+        public async Task<IActionResult> SendReactionMessage(Guid contactId, [FromBody] ReactionRequestDto request)
+        {
+            try
+            {
+                var contact = await _contactService.Query(c => c.Id == contactId).FirstOrDefaultAsync();
+
+                var chat = await _chatService.Query(chat => chat.ContactId == contactId).FirstOrDefaultAsync();
+
+                _ = Guid.TryParse(request.Key.Id, out var guid);
+
+                var message = await _messageService.Query(m => m.Id == guid && m.ContactId == contactId).FirstOrDefaultAsync();
+
+                if (chat == null)
+                    return NoContent();
+
+                if (message == null)
+                    return NoContent();
+
+                if (contact == null)
+                    return BadRequest("Contato não encontrado!");
+
+                if (string.IsNullOrWhiteSpace(contact.Number))
+                    return BadRequest("Contato não possui número cadastrado.");
+
+                if (string.IsNullOrWhiteSpace(request.Reaction))
+                    return BadRequest("Mensagem não pode ser vazia.");
+
+                request.Key.RemoteJid = contact.RemoteJid;
+
+                request.Key.FromMe = true;
+
+                request.Key.Id = message.ExternalId;
+
+                // EvolutionService retorna STRING → ajustado
+                var responseString = await _evolutionService.SendReactionMessageAsync(request);
+
+                var response = JsonSerializer.Deserialize<MessageUpsertDataDto>(responseString);
+
+                var messageReaction = new MessageReactionDto
+                {
+                    MessageId = message.Id,
+                    ContactId = contact.Id,
+                    Reaction = request.Reaction
+                };
+
+                await _messageReactionService.AddAsync(messageReaction);
+
+                await _messageReactionService.SaveChangesAsync();
+                
+                return ResponseViewModel<object>
+                    .Success(null)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>
+                    .Fail(ex.Message)
+                    .ToActionResult();
+            }
+        }
+
+        // ======================================================
+        // POST → Deleta a mensagem
+        // ======================================================
+        [HttpPost("messages/{contactId:guid}/delete")]
+        public async Task<IActionResult> DeleteMessage(Guid contactId, [FromBody] DeleteRequestDto request)
+        {
+            try
+            {
+                var contact = await _contactService.Query(c => c.Id == contactId).FirstOrDefaultAsync();
+
+                var chat = await _chatService.Query(chat => chat.ContactId == contactId).FirstOrDefaultAsync();
+
+                _ = Guid.TryParse(request.Id, out var guid);
+
+                var message = await _messageService.Query(m => m.Id == guid && m.ContactId == contactId).FirstOrDefaultAsync();
+
+                if (chat == null)
+                    return NoContent();
+
+                if (message == null)
+                    return NoContent();
+
+                if (contact == null)
+                    return BadRequest("Contato não encontrado!");
+
+                if (string.IsNullOrWhiteSpace(contact.Number))
+                    return BadRequest("Contato não possui número cadastrado.");
+
+                request.RemoteJid = contact.RemoteJid;
+
+                request.FromMe = true;
+
+                request.Id = message.ExternalId;
+
+                // EvolutionService retorna STRING → ajustado
+                var responseString = await _evolutionService.DeleteMessageAsync(request);
+
+                var response = JsonSerializer.Deserialize<MessageUpsertDataDto>(responseString);
+
+                message.Status = MessageStatusEnum.Deleted;
+
+                _messageService.Update(message);
+
+                await _messageService.SaveChangesAsync();
+                
+                return ResponseViewModel<object>
+                    .Success(null)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>
+                    .Fail(ex.Message)
+                    .ToActionResult();
+            }
+        }
+
+        // ======================================================
+        // POST → Encaminha a mensagem
+        // ======================================================
+        [HttpPost("messages/{contactId:guid}/forward")]
+        public async Task<IActionResult> ForwardMessage(Guid contactId, [FromBody] ForwardRequestDto request)
+        {
+            try
+            {
+                var contact = await _contactService.Query(c => c.Id == contactId).FirstOrDefaultAsync();
+
+                var chat = await _chatService.Query(chat => chat.ContactId == contactId).FirstOrDefaultAsync();
+
+                _ = Guid.TryParse(request.Id, out var guid);
+
+                var message = await _messageService.Query(m => m.Id == guid).FirstOrDefaultAsync();
+
+                if (chat == null)
+                    return NoContent();
+
+                if (message == null)
+                    return NoContent();
+
+                if (contact == null)
+                    return BadRequest("Contato não encontrado!");
+
+                if (string.IsNullOrWhiteSpace(contact.Number))
+                    return BadRequest("Contato não possui número cadastrado.");
+
+                request.RemoteJid = contact.RemoteJid;
+
+                request.FromMe = true;
+
+                request.Id = message.ExternalId;
+
+                string conversation = message.Content;
+
+                if (!message.IsFromMe)
+                  conversation = $"""
+                    Mensagem de {contact.DisplayName}:
+                    Conteúdo: {message.Content}
+                  """;
+
+                var messageRequest = new MessageRequestDto
+                {
+                    Number = contact.Number,
+                    Conversation = conversation
+                };
+
+                // EvolutionService retorna STRING → ajustado
+                var responseString = await _evolutionService.SendMessageAsync(messageRequest);
+
+                var response = JsonSerializer.Deserialize<MessageUpsertDataDto>(responseString);
+
+                message.Status = MessageStatusEnum.Deleted;
+
+                _messageService.Update(message);
+
+                await _messageService.SaveChangesAsync();
+                
+                return ResponseViewModel<object>
+                    .Success(null)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>
                     .Fail(ex.Message)
                     .ToActionResult();
             }

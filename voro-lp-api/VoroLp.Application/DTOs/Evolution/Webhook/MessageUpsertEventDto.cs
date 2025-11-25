@@ -90,19 +90,7 @@ namespace VoroLp.Application.DTOs.Evolution.Webhook
         public string Text { get; set; } = string.Empty;
 
         [JsonPropertyName("senderTimestampMs")]
-        public TimestampDto SenderTimestampMs { get; set; } = new();
-    }
-
-    public class TimestampDto
-    {
-        [JsonPropertyName("low")]
-        public long Low { get; set; }
-
-        [JsonPropertyName("high")]
-        public long High { get; set; }
-
-        [JsonPropertyName("unsigned")]
-        public bool Unsigned { get; set; }
+        public long SenderTimestampMs { get; set; }
     }
 
     public class MediaMessageDto

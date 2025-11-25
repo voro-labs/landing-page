@@ -33,6 +33,7 @@ namespace VoroLp.API.Extensions.Configurations
             services.AddScoped<IContactIdentifierRepository, ContactIdentifierRepository>();
             services.AddScoped<IContactRepository, ContactRepository>();
             services.AddScoped<IMessageRepository, MessageRepository>();
+            services.AddScoped<IMessageReactionRepository, MessageReactionRepository>();
             services.AddScoped<IGroupMemberRepository, GroupMemberRepository>();
             services.AddScoped<IGroupRepository, GroupRepository>();
             services.AddScoped<IChatRepository, ChatRepository>();
@@ -47,6 +48,7 @@ namespace VoroLp.API.Extensions.Configurations
             services.AddScoped<IContactIdentifierService, ContactIdentifierService>();
             services.AddScoped<IContactService, ContactService>();
             services.AddScoped<IMessageService, MessageService>();
+            services.AddScoped<IMessageReactionService, MessageReactionService>();
             services.AddScoped<IGroupMemberService, GroupMemberService>();
             services.AddScoped<IGroupService, GroupService>();
             services.AddScoped<IChatService, ChatService>();

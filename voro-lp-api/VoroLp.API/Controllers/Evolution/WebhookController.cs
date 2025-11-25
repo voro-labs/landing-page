@@ -224,7 +224,7 @@ namespace VoroLp.API.Controllers.Evolution
                     Reaction = content,
                 };
 
-                message.Reactions.Add(reaction);
+                message.MessageReactions.Add(reaction);
 
                 _messageService.Update(message);
                 await _messageService.SaveChangesAsync();

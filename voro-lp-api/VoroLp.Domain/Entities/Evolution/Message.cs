@@ -39,7 +39,7 @@ namespace VoroLp.Domain.Entities.Evolution
         public Guid ChatId { get; set; }
         public Chat Chat { get; set; } = null!;
 
-        public ICollection<MessageReaction> Reactions { get; set; } = [];
+        public ICollection<MessageReaction> MessageReactions { get; set; } = [];
 
         public Guid? QuotedMessageId { get; set; }
         public Message? QuotedMessage { get; set; }
