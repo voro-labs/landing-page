@@ -329,6 +329,8 @@ namespace VoroLp.API.Controllers.Evolution
                 
                 await _contactService.SaveChangesAsync();
 
+                messageDto.QuotedMessage = _mapper.Map<MessageDto>(message);
+
                 return ResponseViewModel<MessageDto>
                     .Success(messageDto)
                     .ToActionResult();
