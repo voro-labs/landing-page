@@ -1,4 +1,5 @@
-﻿using VoroLp.Domain.Entities.Evolution;
+﻿using System.Text.Json.Serialization;
+using VoroLp.Domain.Entities.Evolution;
 
 namespace VoroLp.Application.DTOs.Evolution
 {
@@ -18,6 +19,8 @@ namespace VoroLp.Application.DTOs.Evolution
 
         // A mensagem relacionada
         public Guid MessageId { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.Always)]
         public MessageDto Message { get; set; } = null!;
     }
 }

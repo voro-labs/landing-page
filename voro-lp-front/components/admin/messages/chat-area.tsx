@@ -85,11 +85,16 @@ export function ChatArea({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputValue.trim()) {
-      onSendMessage(inputValue, quotedMessage?.id);
-      setInputValue("");
-      setQuotedMessage(null);
+    if (!inputValue.trim()) return;
+
+    if (quotedMessage?.id) {
+      onSendMessage(inputValue, quotedMessage.id)
+    } else {
+      onSendMessage(inputValue)
     }
+
+    setInputValue("");
+    setQuotedMessage(null);
   };
 
   const handleReply = (message: MessageDto) => {

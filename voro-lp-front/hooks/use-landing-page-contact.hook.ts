@@ -6,11 +6,6 @@ export function useLandingPageContact() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleApiError = (message: string, err?: unknown) => {
-    console.error(message, err);
-    setError(message);
-  };
-
   // 🔹 Enviar mensagem
   const postLandingPageContact = async (LandingPageContact: LandingPageContactDto) => {
     setLoading(true);

@@ -146,15 +146,19 @@ namespace VoroLp.Application.Services.Evolution
         {
             var url = $"/message/sendText/{_evolutionUtil.Instance}";
             var payload = new { number = request.Number, text = request.Conversation };
-            var response = await _httpClient.PostAsJsonAsync(url, payload);
+            var jsonPayload = JsonSerializer.Serialize(payload);
+            var response = await _httpClient.PostAsync(url, new StringContent(jsonPayload, System.Text.Encoding.UTF8, "application/json"));
+            response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsStringAsync();
         }
 
         public async Task<string> SendQuotedMessageAsync(QuotedRequestDto request)
         {
             var url = $"/message/sendText/{_evolutionUtil.Instance}";
-            var payload = new { number = request.Number, quoted = request };
-            var response = await _httpClient.PostAsJsonAsync(url, payload);
+            var payload = new { number = request.Number, text = request.Conversation, quoted = new { key = new { id = request.Key.Id } } };
+            var jsonPayload = JsonSerializer.Serialize(payload);
+            var response = await _httpClient.PostAsync(url, new StringContent(jsonPayload, System.Text.Encoding.UTF8, "application/json"));
+            response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsStringAsync();
         }
 
@@ -162,7 +166,9 @@ namespace VoroLp.Application.Services.Evolution
         {
             var url = $"/message/sendMedia/{_evolutionUtil.Instance}";
             var payload = request;
-            var response = await _httpClient.PostAsJsonAsync(url, payload);
+            var jsonPayload = JsonSerializer.Serialize(payload);
+            var response = await _httpClient.PostAsync(url, new StringContent(jsonPayload, System.Text.Encoding.UTF8, "application/json"));
+            response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsStringAsync();
         }
 
@@ -170,7 +176,9 @@ namespace VoroLp.Application.Services.Evolution
         {
             var url = $"/message/sendLocation/{_evolutionUtil.Instance}";
             var payload = request;
-            var response = await _httpClient.PostAsJsonAsync(url, payload);
+            var jsonPayload = JsonSerializer.Serialize(payload);
+            var response = await _httpClient.PostAsync(url, new StringContent(jsonPayload, System.Text.Encoding.UTF8, "application/json"));
+            response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsStringAsync();
         }
 
@@ -178,7 +186,9 @@ namespace VoroLp.Application.Services.Evolution
         {
             var url = $"/message/sendContact/{_evolutionUtil.Instance}";
             var payload = request;
-            var response = await _httpClient.PostAsJsonAsync(url, payload);
+            var jsonPayload = JsonSerializer.Serialize(payload);
+            var response = await _httpClient.PostAsync(url, new StringContent(jsonPayload, System.Text.Encoding.UTF8, "application/json"));
+            response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsStringAsync();
         }
 
@@ -186,7 +196,9 @@ namespace VoroLp.Application.Services.Evolution
         {
             var url = $"/message/sendReaction/{_evolutionUtil.Instance}";
             var payload = request;
-            var response = await _httpClient.PostAsJsonAsync(url, payload);
+            var jsonPayload = JsonSerializer.Serialize(payload);
+            var response = await _httpClient.PostAsync(url, new StringContent(jsonPayload, System.Text.Encoding.UTF8, "application/json"));
+            response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsStringAsync();
         }
     }

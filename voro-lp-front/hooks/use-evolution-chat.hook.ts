@@ -11,11 +11,6 @@ export function useEvolutionChat() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const handleApiError = (message: string, err?: unknown) => {
-    console.error(message, err)
-    setError(message)
-  }
-
   // 🔹 Buscar contatos
   const fetchContacts = useCallback(async () => {
     setLoading(true)
@@ -30,7 +25,7 @@ export function useEvolutionChat() {
 
       setContacts(response.data ?? [])
     } catch (err) {
-      handleApiError("Erro ao carregar contatos", err)
+      setError(err instanceof Error ? err.message : "Erro desconhecido");
     } finally {
       setLoading(false)
     }
@@ -62,7 +57,7 @@ export function useEvolutionChat() {
 
       setContacts(prev => [...prev, newContact]);
     } catch (err) {
-      handleApiError("Erro ao salvar contato", err)
+      setError(err instanceof Error ? err.message : "Erro desconhecido");
     }
   }, [])
 
@@ -107,7 +102,7 @@ export function useEvolutionChat() {
         return [...prev, newContact];
       });
     } catch (err) {
-      handleApiError("Erro ao salvar contato", err)
+      setError(err instanceof Error ? err.message : "Erro desconhecido");
     }
   }, [])
 
@@ -128,7 +123,7 @@ export function useEvolutionChat() {
         [contactId]: response.data ?? [],
       }))
     } catch (err) {
-      handleApiError("Erro ao carregar mensagens", err)
+      setError(err instanceof Error ? err.message : "Erro desconhecido");
     } finally {
     }
   }, [])
@@ -139,7 +134,7 @@ export function useEvolutionChat() {
     setError(null)
 
     try {
-      const body = { content: text }
+      const body = { conversation: text }
 
       const response = await secureApiCall<MessageDto>(`${API_CONFIG.ENDPOINTS.CHAT}/messages/${contactId}/send`, {
         method: "POST",
@@ -170,7 +165,48 @@ export function useEvolutionChat() {
         [contactId]: [...(prev[contactId] || []), newMessage],
       }))
     } catch (err) {
-      handleApiError("Erro ao enviar mensagem", err)
+      setError(err instanceof Error ? err.message : "Erro desconhecido");
+    }
+  }, [])
+
+  const sendQuotedMessage = useCallback(async (contactId: string, messageId: string, text: string) => {
+    if (!contactId || !messageId || !text) return
+    setError(null)
+
+    try {
+      const body = { conversation: text, key: { id: messageId } }
+
+      const response = await secureApiCall<MessageDto>(`${API_CONFIG.ENDPOINTS.CHAT}/messages/${contactId}/send/quoted`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      })
+
+      if (response.hasError) throw new Error(response.message ?? "Erro ao enviar mensagem")
+      
+      let newMessage: MessageDto = {
+        id: Date.now().toString(),
+        content: text,
+        sentAt: new Date(),
+        status: MessageStatusEnum.Created,
+        isFromMe: true,
+        contactId: contactId,
+        quotedMessageId: messageId,
+        contact: {
+          lastMessage: text,
+          lastMessageAt: Date.now.toString()
+        } as ContactDto,
+        messageReactions: []
+      };
+
+      if (response.data)
+        newMessage = response.data;
+
+      setMessages((prev) => ({
+        ...prev,
+        [contactId]: [...(prev[contactId] || []), newMessage],
+      }))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro desconhecido");
     }
   }, [])
 
@@ -198,8 +234,10 @@ export function useEvolutionChat() {
     updateContact,
     fetchMessages,
     sendMessage,
+    sendQuotedMessage,
     loading,
     error,
+    setError,
     clearError: () => setError(null),
   }
 }

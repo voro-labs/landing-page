@@ -31,6 +31,7 @@ export interface MessageDto {
   group?: GroupDto;
   chatId?: string;
   chat?: ChatDto;
+  quotedMessageId?: string;
   quotedMessage?: MessageDto;
   messageReactions: MessageReactionDto[];
 }

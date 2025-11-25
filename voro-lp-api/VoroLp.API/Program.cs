@@ -5,7 +5,6 @@ using System.Text.Json.Serialization;
 using VoroLp.API.Extensions.Configurations;
 using VoroLp.API.Filters;
 using VoroLp.API.Middlewares;
-using VoroLp.Application.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -79,6 +78,5 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHub<MessagesHub>("/ws/messages");
 
 app.Run();

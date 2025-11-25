@@ -1,4 +1,5 @@
-﻿using VoroLp.Domain.Enums;
+﻿using System.Text.Json.Serialization;
+using VoroLp.Domain.Enums;
 
 namespace VoroLp.Application.DTOs.Evolution
 {
@@ -40,8 +41,11 @@ namespace VoroLp.Application.DTOs.Evolution
         public ChatDto Chat { get; set; } = null!;
 
         public Guid? QuotedMessageId { get; set; }
-        public MessageDto? QuotedMessage { get; set; }
 
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public MessageDto? QuotedMessage { get; set; }
+        
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public ICollection<MessageReactionDto> MessageReactions { get; set; } = [];
     }
 }

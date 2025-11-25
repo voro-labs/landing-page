@@ -1,4 +1,6 @@
-﻿namespace VoroLp.Application.DTOs.Evolution
+﻿using System.Text.Json.Serialization;
+
+namespace VoroLp.Application.DTOs.Evolution
 {
     public class GroupDto
     {
@@ -11,7 +13,10 @@
         public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
         public DateTimeOffset LastMessageAt { get; set; } = DateTimeOffset.UtcNow;
 
+        [JsonIgnore(Condition = JsonIgnoreCondition.Always)]
         public ICollection<GroupMemberDto> Members { get; set; } = [];
+        
+        [JsonIgnore(Condition = JsonIgnoreCondition.Always)]
         public ICollection<MessageDto> Messages { get; set; } = [];
     }
 }

@@ -231,7 +231,7 @@ namespace VoroLp.API.Controllers.Evolution
                     ChatId = chat.Id,
                     ContactId = contact.Id,
                     Content = $"{response?.Message.Conversation}",
-                    ExternalId = Guid.NewGuid().ToString(),
+                    ExternalId = $"{response?.Key.Id}",
                     IsFromMe = true,
                     RawJson = responseString,
                     RemoteFrom = "",
@@ -275,7 +275,14 @@ namespace VoroLp.API.Controllers.Evolution
 
                 var chat = await _chatService.Query(chat => chat.ContactId == contactId).FirstOrDefaultAsync();
 
+                _ = Guid.TryParse(request.Key.Id, out var guid);
+
+                var message = await _messageService.Query(m => m.Id == guid && m.ContactId == contactId).FirstOrDefaultAsync();
+
                 if (chat == null)
+                    return NoContent();
+
+                if (message == null)
                     return NoContent();
 
                 if (contact == null)
@@ -284,10 +291,12 @@ namespace VoroLp.API.Controllers.Evolution
                 if (string.IsNullOrWhiteSpace(contact.Number))
                     return BadRequest("Contato não possui número cadastrado.");
 
-                if (string.IsNullOrWhiteSpace(request.Message.Conversation))
+                if (string.IsNullOrWhiteSpace(request.Conversation))
                     return BadRequest("Mensagem não pode ser vazia.");
 
                 request.Number = contact.Number;
+
+                request.Key.Id = message.ExternalId;
 
                 // EvolutionService retorna STRING → ajustado
                 var responseString = await _evolutionService.SendQuotedMessageAsync(request);
@@ -299,14 +308,15 @@ namespace VoroLp.API.Controllers.Evolution
                     ChatId = chat.Id,
                     ContactId = contact.Id,
                     Content = $"{response?.Message.Conversation}",
-                    ExternalId = Guid.NewGuid().ToString(),
+                    ExternalId = $"{response?.Key.Id}",
                     IsFromMe = true,
                     RawJson = responseString,
                     RemoteFrom = "",
                     RemoteTo = contact.RemoteJid,
                     SentAt = DateTimeOffset.UtcNow,
                     Status = MessageStatusEnum.Sent,
-                    Type = MessageTypeEnum.Text
+                    Type = MessageTypeEnum.Text,
+                    QuotedMessageId = message.Id
                 };
 
                 await _messageService.AddAsync(messageDto);

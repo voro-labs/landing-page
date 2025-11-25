@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Http;
 
 namespace VoroLp.Application.DTOs.Evolution
 {
@@ -23,7 +24,9 @@ namespace VoroLp.Application.DTOs.Evolution
         public string? LastKnownPresence { get; set; }
         public DateTimeOffset LastPresenceAt { get; set; } = DateTimeOffset.UtcNow;
 
+        [JsonIgnore(Condition = JsonIgnoreCondition.Always)]
         public ICollection<MessageDto> Messages { get; set; } = [];
+        [JsonIgnore(Condition = JsonIgnoreCondition.Always)]
         public ICollection<GroupMemberDto> GroupMemberships { get; set; } = [];
     }
 }
