@@ -18,6 +18,7 @@ export function Contact({ lpConfig }: { lpConfig: LandingPageSectionDto | undefi
   const { postLandingPageContact, loading, error, clearError } = useLandingPageContact();
   
   const [formData, setFormData] = useState<LandingPageContactDto>({
+    id: "",
     name: "",
     email: "",
     message: "",
@@ -63,6 +64,7 @@ export function Contact({ lpConfig }: { lpConfig: LandingPageSectionDto | undefi
     await postLandingPageContact(formData);
     
     setFormData({
+      id: "",
       name: "",
       email: "",
       message: "",
