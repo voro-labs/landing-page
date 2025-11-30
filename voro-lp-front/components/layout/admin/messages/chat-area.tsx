@@ -302,7 +302,7 @@ export function ChatArea({
 
         <form onSubmit={handleSubmit} className="flex items-center gap-2 p-4">
 
-          <input
+          <Input
             type="file"
             ref={fileInputRef}
             className="hidden"
@@ -357,7 +357,7 @@ export function ChatArea({
                   {editedName.charAt(0) || editedNumber.charAt(0)}
                 </AvatarFallback>
               </Avatar>
-              <input
+              <Input
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"

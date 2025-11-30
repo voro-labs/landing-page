@@ -1,7 +1,7 @@
 "use client"
 
 import { useLandingPageConfig } from "@/hooks/use-landing-page-config.hook"
-import { Loading } from "@/components/loading/loading.component"
+import { Loading } from "@/components/ui/custom/loading/loading"
 import { AlertCircle } from "lucide-react"
 
 

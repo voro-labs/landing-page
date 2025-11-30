@@ -1,12 +1,12 @@
 "use client"
 
+import { LoadingSimple } from "@/components/ui/custom/loading/loading-simple"
 import { useLandingPageConfig } from "@/hooks/use-landing-page-config.hook"
-import { LoadingSimple } from "../../loading/loading-simple.component"
 import { AlertCircle } from "lucide-react"
 
 
 export default function Settings() {
-  const { LandingPageConfig, loading, updateLandingPageConfig, error, clearError } = useLandingPageConfig("settings")
+  const { loading, error, clearError } = useLandingPageConfig("settings")
 
   if (loading) {
     return <LoadingSimple />
