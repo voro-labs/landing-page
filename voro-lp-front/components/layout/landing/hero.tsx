@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { HtmlRender } from "@/lib/utils"
-import { LandingPageSectionDto } from "@/types/DTOs/landingPageSectionDto.interface"
+import { HeroMetaDataDto, LandingPageSectionDto } from "@/types/DTOs/landingPageConfigDto.interface"
 import { motion } from "framer-motion"
 import { ArrowRight } from "lucide-react"
 import Image from "next/image"
@@ -45,7 +45,7 @@ export function Hero({ lpConfig }: { lpConfig: LandingPageSectionDto | undefined
                 para o seu negócio
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground leading-relaxed text-pretty">
-                {lpConfig?.metaData.subtitle}
+                {(lpConfig?.metaData as HeroMetaDataDto)?.subtitle}
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
